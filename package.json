@@ -18,6 +18,22 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ldraney/inflow-client.git"
+  },
+  "keywords": [
+    "inflow",
+    "inventory",
+    "api",
+    "client"
+  ],
+  "author": "ldraney",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ldraney/inflow-client/issues"
+  },
+  "homepage": "https://github.com/ldraney/inflow-client#readme",
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
