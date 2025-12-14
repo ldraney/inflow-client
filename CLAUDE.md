@@ -25,13 +25,16 @@ These must be set before importing the client.
 ## Usage
 
 ```typescript
-import { get, getAll, put } from 'inflow-client';
+import { get, getAll, getOne, put } from 'inflow-client';
 
 // GET single item
 const product = await get<Product>('/products/abc-123');
 
 // GET all with pagination
 const products = await getAll<Product>('/products');
+
+// GET one by ID
+const product = await getOne<Product>('/products', 'abc-123');
 
 // PUT (create or update)
 await put('/products/abc-123', { name: 'Widget', itemType: 'Inventory' });
@@ -51,6 +54,7 @@ put<T>(endpoint: string, body: unknown): Promise<T>
 ```
 inflow-client/
 ├── CLAUDE.md
+├── README.md
 ├── package.json
 ├── tsconfig.json
 ├── src/
@@ -60,9 +64,9 @@ inflow-client/
 
 ## Definition of Done
 
-- [ ] `get()`, `getAll()`, `getOne()` work (extracted from inflow-get)
-- [ ] `put()` works for create and update
-- [ ] Rate limiting works for mixed GET/PUT
-- [ ] Published to npm or GitHub packages
+- [x] `get()`, `getAll()`, `getOne()` work (extracted from inflow-get)
+- [x] `put()` works for create and update
+- [x] Rate limiting works for mixed GET/PUT
+- [x] Published to npm (v0.1.0)
 - [ ] `inflow-get` updated to depend on this
 - [ ] `inflow-put` depends on this
