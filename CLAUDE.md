@@ -25,28 +25,42 @@ These must be set before importing the client.
 ## Usage
 
 ```typescript
-import { get, getAll, getOne, put } from 'inflow-client';
+import { createClient } from 'inflow-client';
+
+const client = createClient({
+  apiKey: process.env.INFLOW_API_KEY!,
+  companyId: process.env.INFLOW_COMPANY_ID!,
+});
 
 // GET single item
-const product = await get<Product>('/products/abc-123');
+const product = await client.get<Product>('/products/abc-123');
 
 // GET all with pagination
-const products = await getAll<Product>('/products');
+const products = await client.getAll<Product>('/products');
 
 // GET one by ID
-const product = await getOne<Product>('/products', 'abc-123');
+const product = await client.getOne<Product>('/products', 'abc-123');
 
 // PUT (create or update)
-await put('/products/abc-123', { name: 'Widget', itemType: 'Inventory' });
+await client.put('/products/abc-123', { name: 'Widget', itemType: 'Inventory' });
 ```
 
 ## API
 
 ```typescript
-get<T>(endpoint: string, params?: QueryParams): Promise<T>
-getAll<T>(endpoint: string, params?: QueryParams): Promise<T[]>
-getOne<T>(endpoint: string, id: string, params?: QueryParams): Promise<T>
-put<T>(endpoint: string, body: unknown): Promise<T>
+createClient(config: InflowClientConfig): InflowClient
+
+interface InflowClientConfig {
+  apiKey: string;
+  companyId: string;
+}
+
+interface InflowClient {
+  get<T>(endpoint: string, params?: QueryParams): Promise<T>;
+  getAll<T>(endpoint: string, params?: QueryParams): Promise<T[]>;
+  getOne<T>(endpoint: string, id: string, params?: QueryParams): Promise<T>;
+  put<T>(endpoint: string, body: unknown): Promise<T>;
+}
 ```
 
 ## Structure
