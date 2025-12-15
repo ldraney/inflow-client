@@ -76,11 +76,8 @@ inflow-client/
 └── dist/             # Compiled output
 ```
 
-## Definition of Done
+## Status
 
-- [x] `get()`, `getAll()`, `getOne()` work (extracted from inflow-get)
-- [x] `put()` works for create and update
-- [x] Rate limiting works for mixed GET/PUT
-- [x] Published to npm (v0.1.0)
-- [ ] `inflow-get` updated to depend on this
-- [ ] `inflow-put` depends on this
+**Complete.** Published to npm as `inflow-client@0.2.0`.
+
+See [inflow-get](https://github.com/ldraney/inflow-get) and [inflow-put](https://github.com/ldraney/inflow-put) for downstream consumers.
