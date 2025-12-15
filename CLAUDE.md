@@ -1,6 +1,6 @@
 # inflow-client
 
-Minimal HTTP client for the Inflow Inventory API. Shared by `inflow-get` and `inflow-put`.
+Shared HTTP client for the Inflow Inventory API. Handles auth and rate limiting so downstream packages (`inflow-get`, `inflow-put`) don't have to.
 
 ## Purpose
 
@@ -78,6 +78,6 @@ inflow-client/
 
 ## Status
 
-**Complete.** Published to npm as `inflow-client@0.2.0`.
+**Complete.** Published to npm as `inflow-client@0.2.1`.
 
 See [inflow-get](https://github.com/ldraney/inflow-get) and [inflow-put](https://github.com/ldraney/inflow-put) for downstream consumers.

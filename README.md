@@ -1,6 +1,6 @@
 # inflow-client
 
-Minimal HTTP client for the [Inflow Inventory API](https://www.inflowinventory.com/).
+Minimal HTTP client for the [Inflow Inventory API](https://www.inflowinventory.com/). Shared client layer for [inflow-get](https://github.com/ldraney/inflow-get) and [inflow-put](https://github.com/ldraney/inflow-put) — handles auth and rate limiting so downstream packages don't have to.
 
 ## Why use this?
 
