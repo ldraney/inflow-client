@@ -1,6 +1,6 @@
 {
   "name": "inflow-client",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Inflow Inventory API client with built-in auth and rate limiting",
   "main": "dist/index.js",
