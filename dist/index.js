@@ -4,6 +4,8 @@
 const BASE_URL = 'https://cloudapi.inflowinventory.com';
 const API_VERSION = '2025-06-24';
 const RATE_LIMIT_DELAY = 1200; // 1.2s = 50 req/min (safe margin under 60/min)
+const MAX_RETRIES = 3;
+const DEFAULT_RETRY_DELAY = 60000; // 60s default if no Retry-After header
 // ============================================================================
 // Factory
 // ============================================================================
@@ -20,14 +22,41 @@ export function createClient(config) {
     }
     const { apiKey, companyId } = config;
     let lastRequestTime = 0;
-    async function rateLimitedFetch(url, options) {
+    function parseRetryAfter(response) {
+        const retryAfter = response.headers.get('Retry-After');
+        if (!retryAfter)
+            return DEFAULT_RETRY_DELAY;
+        // Could be seconds or a date
+        const seconds = parseInt(retryAfter, 10);
+        if (!isNaN(seconds)) {
+            return seconds * 1000; // Convert to ms
+        }
+        // Try parsing as date
+        const date = new Date(retryAfter);
+        if (!isNaN(date.getTime())) {
+            return Math.max(0, date.getTime() - Date.now());
+        }
+        return DEFAULT_RETRY_DELAY;
+    }
+    async function rateLimitedFetch(url, options, retryCount = 0) {
         const now = Date.now();
         const elapsed = now - lastRequestTime;
         if (elapsed < RATE_LIMIT_DELAY) {
             await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY - elapsed));
         }
         lastRequestTime = Date.now();
-        return fetch(url, options);
+        const response = await fetch(url, options);
+        // Handle rate limiting with retry
+        if (response.status === 429) {
+            if (retryCount >= MAX_RETRIES) {
+                return response; // Let caller handle the error
+            }
+            const retryDelay = parseRetryAfter(response);
+            console.warn(`Rate limited (429). Waiting ${Math.round(retryDelay / 1000)}s before retry ${retryCount + 1}/${MAX_RETRIES}...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            return rateLimitedFetch(url, options, retryCount + 1);
+        }
+        return response;
     }
     async function clientGet(endpoint, params = {}) {
         const url = new URL(`${BASE_URL}/${companyId}${endpoint}`);
