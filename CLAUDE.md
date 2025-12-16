@@ -86,6 +86,6 @@ inflow-client/
 
 ## Status
 
-**Complete.** Published to npm as `inflow-client@0.2.1`.
+**Complete.** Published to npm as `inflow-client@0.4.0`.
 
 See [inflow-get](https://github.com/ldraney/inflow-get) and [inflow-put](https://github.com/ldraney/inflow-put) for downstream consumers.
