@@ -6,8 +6,8 @@ const API_VERSION = '2025-06-24';
 const RATE_LIMIT_DELAY = 1200; // 1.2s = 50 req/min (safe margin under 60/min)
 const MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 60000; // 60s default if no Retry-After header
-const WINDOW_LIMIT_THRESHOLD = 50; // Pause when this many requests remain in window
-const WINDOW_RESET_WAIT = 300000; // 5 minutes - conservative wait for window reset
+const WINDOW_LIMIT_THRESHOLD = 20; // Pause when this many requests remain in window
+const WINDOW_RESET_WAIT = 900000; // 15 minutes - conservative wait for window reset
 // ============================================================================
 // Factory
 // ============================================================================
