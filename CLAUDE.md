@@ -38,6 +38,9 @@ const product = await client.get<Product>('/products/abc-123');
 // GET all with pagination
 const products = await client.getAll<Product>('/products');
 
+// GET all with limit (early stopping)
+const first25 = await client.getAll<Product>('/products', {}, { limit: 25 });
+
 // GET one by ID
 const product = await client.getOne<Product>('/products', 'abc-123');
 
@@ -63,9 +66,13 @@ interface RateLimitConfig {
   onRateLimitPause?: (info: RateLimitPauseInfo) => void;
 }
 
+interface GetAllOptions {
+  limit?: number;  // Stop fetching after this many items
+}
+
 interface InflowClient {
   get<T>(endpoint: string, params?: QueryParams): Promise<T>;
-  getAll<T>(endpoint: string, params?: QueryParams): Promise<T[]>;
+  getAll<T>(endpoint: string, params?: QueryParams, options?: GetAllOptions): Promise<T[]>;
   getOne<T>(endpoint: string, id: string, params?: QueryParams): Promise<T>;
   put<T>(endpoint: string, body: unknown): Promise<T>;
 }
@@ -86,6 +93,6 @@ inflow-client/
 
 ## Status
 
-**Complete.** Published to npm as `inflow-client@0.4.0`.
+**Complete.** Published to npm as `inflow-client@0.5.0`.
 
 See [inflow-get](https://github.com/ldraney/inflow-get) and [inflow-put](https://github.com/ldraney/inflow-put) for downstream consumers.

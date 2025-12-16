@@ -24,9 +24,13 @@ export interface InflowClientConfig {
     companyId: string;
     rateLimitConfig?: RateLimitConfig;
 }
+export interface GetAllOptions {
+    /** Stop fetching after collecting this many items */
+    limit?: number;
+}
 export interface InflowClient {
     get<T = unknown>(endpoint: string, params?: QueryParams): Promise<T>;
-    getAll<T = unknown>(endpoint: string, params?: QueryParams): Promise<T[]>;
+    getAll<T = unknown>(endpoint: string, params?: QueryParams, options?: GetAllOptions): Promise<T[]>;
     getOne<T = unknown>(endpoint: string, id: string, params?: QueryParams): Promise<T>;
     put<T = unknown>(endpoint: string, body: unknown): Promise<T>;
 }
@@ -42,7 +46,7 @@ export declare function get<T = unknown>(endpoint: string, params?: QueryParams)
 /**
  * @deprecated Use createClient() instead for explicit configuration
  */
-export declare function getAll<T = unknown>(endpoint: string, params?: QueryParams): Promise<T[]>;
+export declare function getAll<T = unknown>(endpoint: string, params?: QueryParams, options?: GetAllOptions): Promise<T[]>;
 /**
  * @deprecated Use createClient() instead for explicit configuration
  */

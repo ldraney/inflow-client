@@ -42,9 +42,14 @@ export interface InflowClientConfig {
   rateLimitConfig?: RateLimitConfig;
 }
 
+export interface GetAllOptions {
+  /** Stop fetching after collecting this many items */
+  limit?: number;
+}
+
 export interface InflowClient {
   get<T = unknown>(endpoint: string, params?: QueryParams): Promise<T>;
-  getAll<T = unknown>(endpoint: string, params?: QueryParams): Promise<T[]>;
+  getAll<T = unknown>(endpoint: string, params?: QueryParams, options?: GetAllOptions): Promise<T[]>;
   getOne<T = unknown>(endpoint: string, id: string, params?: QueryParams): Promise<T>;
   put<T = unknown>(endpoint: string, body: unknown): Promise<T>;
 }
@@ -252,7 +257,8 @@ export function createClient(config: InflowClientConfig): InflowClient {
     return null;
   }
 
-  async function clientGetAll<T = unknown>(endpoint: string, params: QueryParams = {}): Promise<T[]> {
+  async function clientGetAll<T = unknown>(endpoint: string, params: QueryParams = {}, options: GetAllOptions = {}): Promise<T[]> {
+    const { limit } = options;
     const items: T[] = [];
     const seenIds = new Set<string>();
     let skip = 0;
@@ -290,6 +296,12 @@ export function createClient(config: InflowClientConfig): InflowClient {
           seenIds.add(id);
           items.push(item);
           newCount++;
+
+          // Early stop if we've reached the limit
+          if (limit && items.length >= limit) {
+            console.log(`  Completed ${endpoint}: ${items.length} records (limit reached)`);
+            return items.slice(0, limit);
+          }
         }
       }
 
@@ -352,8 +364,8 @@ export async function get<T = unknown>(endpoint: string, params: QueryParams = {
 /**
  * @deprecated Use createClient() instead for explicit configuration
  */
-export async function getAll<T = unknown>(endpoint: string, params: QueryParams = {}): Promise<T[]> {
-  return getDefaultClient().getAll<T>(endpoint, params);
+export async function getAll<T = unknown>(endpoint: string, params: QueryParams = {}, options: GetAllOptions = {}): Promise<T[]> {
+  return getDefaultClient().getAll<T>(endpoint, params, options);
 }
 
 /**

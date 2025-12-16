@@ -171,7 +171,8 @@ export function createClient(config) {
         }
         return null;
     }
-    async function clientGetAll(endpoint, params = {}) {
+    async function clientGetAll(endpoint, params = {}, options = {}) {
+        const { limit } = options;
         const items = [];
         const seenIds = new Set();
         let skip = 0;
@@ -206,6 +207,11 @@ export function createClient(config) {
                     seenIds.add(id);
                     items.push(item);
                     newCount++;
+                    // Early stop if we've reached the limit
+                    if (limit && items.length >= limit) {
+                        console.log(`  Completed ${endpoint}: ${items.length} records (limit reached)`);
+                        return items.slice(0, limit);
+                    }
                 }
             }
             if (newCount === 0) {
@@ -255,8 +261,8 @@ export async function get(endpoint, params = {}) {
 /**
  * @deprecated Use createClient() instead for explicit configuration
  */
-export async function getAll(endpoint, params = {}) {
-    return getDefaultClient().getAll(endpoint, params);
+export async function getAll(endpoint, params = {}, options = {}) {
+    return getDefaultClient().getAll(endpoint, params, options);
 }
 /**
  * @deprecated Use createClient() instead for explicit configuration
