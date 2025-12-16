@@ -7,6 +7,8 @@ const API_VERSION = '2025-06-24';
 const RATE_LIMIT_DELAY = 1200; // 1.2s = 50 req/min (safe margin under 60/min)
 const MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 60000; // 60s default if no Retry-After header
+const WINDOW_LIMIT_THRESHOLD = 50; // Pause when this many requests remain in window
+const WINDOW_RESET_WAIT = 300000; // 5 minutes - conservative wait for window reset
 
 // ============================================================================
 // Types
@@ -92,6 +94,23 @@ export function createClient(config: InflowClientConfig): InflowClient {
       return rateLimitedFetch(url, options, retryCount + 1);
     }
 
+    // Proactively check window rate limit to avoid hitting 429s
+    const windowLimit = response.headers.get('x-ratelimit-limit');
+    if (windowLimit) {
+      const match = windowLimit.match(/(\d+)\/(\d+)/);
+      if (match) {
+        const used = parseInt(match[1], 10);
+        const max = parseInt(match[2], 10);
+        const remaining = max - used;
+
+        if (remaining <= WINDOW_LIMIT_THRESHOLD) {
+          const waitMinutes = Math.round(WINDOW_RESET_WAIT / 60000);
+          console.warn(`Approaching window rate limit (${used}/${max}, ${remaining} remaining). Pausing ${waitMinutes} minutes for reset...`);
+          await new Promise(resolve => setTimeout(resolve, WINDOW_RESET_WAIT));
+        }
+      }
+    }
+
     return response;
   }
 
@@ -160,8 +179,11 @@ export function createClient(config: InflowClientConfig): InflowClient {
     const seenIds = new Set<string>();
     let skip = 0;
     const top = 100;
+    let page = 1;
 
     while (true) {
+      console.log(`  Fetching ${endpoint} page ${page} (skip=${skip})...`);
+
       const response = await clientGet<T[] | PaginatedResponse<T> | T>(endpoint, {
         ...params,
         top,
@@ -174,10 +196,14 @@ export function createClient(config: InflowClientConfig): InflowClient {
       } else if (response && typeof response === 'object' && 'value' in response && Array.isArray(response.value)) {
         data = response.value;
       } else {
+        console.log(`  Fetched 1 record from ${endpoint}`);
         return [response as T];
       }
 
-      if (data.length === 0) break;
+      if (data.length === 0) {
+        console.log(`  Completed ${endpoint}: ${items.length} total records`);
+        break;
+      }
 
       let newCount = 0;
       for (const item of data) {
@@ -189,8 +215,13 @@ export function createClient(config: InflowClientConfig): InflowClient {
         }
       }
 
-      if (newCount === 0) break;
+      if (newCount === 0) {
+        console.log(`  Completed ${endpoint}: ${items.length} total records (no new items)`);
+        break;
+      }
+
       skip += data.length;
+      page++;
     }
 
     return items;

@@ -5,10 +5,21 @@ Minimal HTTP client for the [Inflow Inventory API](https://www.inflowinventory.c
 ## Why use this?
 
 - **Fail-fast config** - Clear errors if credentials are missing
-- **Rate limiting built-in** - Automatically handles Inflow's 50 req/min limit
-- **Full pagination** - `getAll()` fetches every page automatically
+- **Dual rate limiting** - Handles both per-minute (60/min) and window (1000/window) limits
+- **Full pagination** - `getAll()` fetches every page with progress logging
 - **TypeScript native** - Full type support out of the box
 - **Tiny footprint** - No dependencies
+
+## Rate Limiting
+
+Inflow API has two rate limits:
+
+| Limit | Header | How we handle it |
+|-------|--------|------------------|
+| Per minute | `x-inflow-api-rate-limit: N/60` | 1.2s delay between requests |
+| Per window | `x-ratelimit-limit: N/1000` | Pause 5 min when <50 remaining |
+
+The client automatically pauses before hitting limits, so you'll never see 429 errors during normal operation.
 
 ## Installation
 
