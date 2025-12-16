@@ -17,9 +17,28 @@ Inflow API has two rate limits:
 | Limit | Header | How we handle it |
 |-------|--------|------------------|
 | Per minute | `x-inflow-api-rate-limit: N/60` | 1.2s delay between requests |
-| Per window | `x-ratelimit-limit: N/1000` | Pause 5 min when <50 remaining |
+| Per window (1hr sliding) | `x-ratelimit-limit: N/1000` | Smart pause until requests age out |
 
-The client automatically pauses before hitting limits, so you'll never see 429 errors during normal operation.
+The client tracks request timestamps and calculates optimal wait times based on when requests will age out of the 1-hour sliding window. This avoids unnecessary long pauses.
+
+### Rate Limit Configuration
+
+Customize rate limiting behavior:
+
+```typescript
+const client = createClient({
+  apiKey: '...',
+  companyId: '...',
+  rateLimitConfig: {
+    windowThreshold: 20,      // Pause when this many requests remain (default: 20)
+    windowDurationMs: 3600000, // Sliding window duration in ms (default: 1 hour)
+    bufferRequests: 50,       // Wait until this many requests age out (default: 50)
+    onRateLimitPause: (info) => {
+      console.log(`Pausing ${info.waitMs}ms, ${info.remaining} requests remaining`);
+    },
+  },
+});
+```
 
 ## Installation
 
@@ -59,6 +78,22 @@ createClient(config: InflowClientConfig): InflowClient
 interface InflowClientConfig {
   apiKey: string;
   companyId: string;
+  rateLimitConfig?: RateLimitConfig;
+}
+
+interface RateLimitConfig {
+  windowThreshold?: number;      // Default: 20
+  windowDurationMs?: number;     // Default: 3600000 (1 hour)
+  bufferRequests?: number;       // Default: 50
+  onRateLimitPause?: (info: RateLimitPauseInfo) => void;
+}
+
+interface RateLimitPauseInfo {
+  remaining: number;
+  used: number;
+  max: number;
+  waitMs: number;
+  requestsToRecover: number;
 }
 
 interface InflowClient {

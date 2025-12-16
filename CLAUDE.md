@@ -53,6 +53,14 @@ createClient(config: InflowClientConfig): InflowClient
 interface InflowClientConfig {
   apiKey: string;
   companyId: string;
+  rateLimitConfig?: RateLimitConfig;
+}
+
+interface RateLimitConfig {
+  windowThreshold?: number;      // Default: 20
+  windowDurationMs?: number;     // Default: 3600000 (1 hour)
+  bufferRequests?: number;       // Default: 50
+  onRateLimitPause?: (info: RateLimitPauseInfo) => void;
 }
 
 interface InflowClient {

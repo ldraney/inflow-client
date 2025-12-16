@@ -7,8 +7,9 @@ const API_VERSION = '2025-06-24';
 const RATE_LIMIT_DELAY = 1200; // 1.2s = 50 req/min (safe margin under 60/min)
 const MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 60000; // 60s default if no Retry-After header
-const WINDOW_LIMIT_THRESHOLD = 20; // Pause when this many requests remain in window
-const WINDOW_RESET_WAIT = 900000; // 15 minutes - conservative wait for window reset
+const DEFAULT_WINDOW_THRESHOLD = 20; // Pause when this many requests remain in window
+const DEFAULT_WINDOW_DURATION = 3600000; // 1 hour sliding window
+const DEFAULT_BUFFER_REQUESTS = 50; // Wait until this many requests will have aged out
 
 // ============================================================================
 // Types
@@ -16,9 +17,29 @@ const WINDOW_RESET_WAIT = 900000; // 15 minutes - conservative wait for window r
 
 export type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
+export interface RateLimitPauseInfo {
+  remaining: number;
+  used: number;
+  max: number;
+  waitMs: number;
+  requestsToRecover: number;
+}
+
+export interface RateLimitConfig {
+  /** Pause when this many requests remain in window. Default: 20 */
+  windowThreshold?: number;
+  /** Sliding window duration in ms. Default: 3600000 (1 hour) */
+  windowDurationMs?: number;
+  /** Wait until this many requests age out before resuming. Default: 50 */
+  bufferRequests?: number;
+  /** Callback when rate limit pause occurs */
+  onRateLimitPause?: (info: RateLimitPauseInfo) => void;
+}
+
 export interface InflowClientConfig {
   apiKey: string;
   companyId: string;
+  rateLimitConfig?: RateLimitConfig;
 }
 
 export interface InflowClient {
@@ -48,8 +69,14 @@ export function createClient(config: InflowClientConfig): InflowClient {
     throw new Error('companyId is required - get your Company ID from Inflow Settings > API');
   }
 
-  const { apiKey, companyId } = config;
+  const { apiKey, companyId, rateLimitConfig = {} } = config;
+  const windowThreshold = rateLimitConfig.windowThreshold ?? DEFAULT_WINDOW_THRESHOLD;
+  const windowDurationMs = rateLimitConfig.windowDurationMs ?? DEFAULT_WINDOW_DURATION;
+  const bufferRequests = rateLimitConfig.bufferRequests ?? DEFAULT_BUFFER_REQUESTS;
+  const onRateLimitPause = rateLimitConfig.onRateLimitPause;
+
   let lastRequestTime = 0;
+  const requestTimestamps: number[] = [];
 
   function parseRetryAfter(response: Response): number {
     const retryAfter = response.headers.get('Retry-After');
@@ -70,6 +97,29 @@ export function createClient(config: InflowClientConfig): InflowClient {
     return DEFAULT_RETRY_DELAY;
   }
 
+  function cleanOldTimestamps(): void {
+    const cutoff = Date.now() - windowDurationMs;
+    while (requestTimestamps.length > 0 && requestTimestamps[0] < cutoff) {
+      requestTimestamps.shift();
+    }
+  }
+
+  function calculateOptimalWait(targetRecovery: number): number {
+    if (requestTimestamps.length === 0) return 0;
+
+    // Sort timestamps (should already be sorted, but ensure it)
+    requestTimestamps.sort((a, b) => a - b);
+
+    // Find when 'targetRecovery' requests will have aged out
+    // The Nth oldest timestamp + windowDuration = when it expires
+    const targetIndex = Math.min(targetRecovery - 1, requestTimestamps.length - 1);
+    const targetTimestamp = requestTimestamps[targetIndex];
+    const expirationTime = targetTimestamp + windowDurationMs;
+    const waitTime = Math.max(0, expirationTime - Date.now());
+
+    return waitTime;
+  }
+
   async function rateLimitedFetch(url: URL, options: RequestInit, retryCount = 0): Promise<Response> {
     const now = Date.now();
     const elapsed = now - lastRequestTime;
@@ -79,6 +129,11 @@ export function createClient(config: InflowClientConfig): InflowClient {
     }
 
     lastRequestTime = Date.now();
+
+    // Record this request timestamp and clean up old ones
+    requestTimestamps.push(lastRequestTime);
+    cleanOldTimestamps();
+
     const response = await fetch(url, options);
 
     // Handle rate limiting with retry
@@ -103,10 +158,33 @@ export function createClient(config: InflowClientConfig): InflowClient {
         const max = parseInt(match[2], 10);
         const remaining = max - used;
 
-        if (remaining <= WINDOW_LIMIT_THRESHOLD) {
-          const waitMinutes = Math.round(WINDOW_RESET_WAIT / 60000);
-          console.warn(`Approaching window rate limit (${used}/${max}, ${remaining} remaining). Pausing ${waitMinutes} minutes for reset...`);
-          await new Promise(resolve => setTimeout(resolve, WINDOW_RESET_WAIT));
+        if (remaining <= windowThreshold) {
+          // Calculate optimal wait time based on when requests will age out
+          const waitMs = calculateOptimalWait(bufferRequests);
+          const waitMinutes = Math.round(waitMs / 60000);
+
+          const pauseInfo: RateLimitPauseInfo = {
+            remaining,
+            used,
+            max,
+            waitMs,
+            requestsToRecover: bufferRequests,
+          };
+
+          if (onRateLimitPause) {
+            onRateLimitPause(pauseInfo);
+          }
+
+          console.warn(
+            `Approaching window rate limit (${used}/${max}, ${remaining} remaining). ` +
+            `Waiting ${waitMinutes} min for ${bufferRequests} requests to age out...`
+          );
+
+          if (waitMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            // Clean up timestamps after waiting
+            cleanOldTimestamps();
+          }
         }
       }
     }
